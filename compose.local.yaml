@@ -1,0 +1,9 @@
+# Сборка бэкенда из соседнего клона ../backend вместо образов из GHCR:
+#   docker compose -f compose.yaml -f compose.local.yaml up -d --build
+services:
+  migrate:
+    build: { context: ../backend, args: { CMD: migrate } }
+  api:
+    build: { context: ../backend, args: { CMD: api } }
+  worker:
+    build: { context: ../backend, args: { CMD: worker } }

@@ -1,0 +1,56 @@
+# Локальное окружение всей системы: `docker compose up -d`.
+# Образы бэкенда берутся из GHCR; собрать из ../backend: `make up-local`.
+# Только для разработки: пароли здесь тестовые.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: autocheck
+      POSTGRES_PASSWORD: autocheck
+      POSTGRES_DB: autocheck
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autocheck -d autocheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # SeaweedFS в режиме «всё в одном»: master + volume + filer + S3-шлюз.
+  # Для прода компоненты разносятся по отдельным контейнерам.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    ports: ["8333:8333", "9333:9333"]
+    volumes:
+      - seaweeddata:/data
+      - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+
+  migrate:
+    image: ghcr.io/autocheck-team/backend-migrate:${BACKEND_TAG:-latest}
+    command: ["up"]
+    environment: &backend-env
+      DATABASE_URL: postgres://autocheck:autocheck@postgres:5432/autocheck?sslmode=disable
+      S3_ENDPOINT: seaweedfs:8333
+      S3_BUCKET: autocheck
+      S3_ACCESS_KEY: autocheck
+      S3_SECRET_KEY: autocheck-secret
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    image: ghcr.io/autocheck-team/backend-api:${BACKEND_TAG:-latest}
+    environment: *backend-env
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    image: ghcr.io/autocheck-team/backend-worker:${BACKEND_TAG:-latest}
+    environment: *backend-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  pgdata:
+  seaweeddata:

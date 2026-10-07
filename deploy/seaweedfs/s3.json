@@ -1,0 +1,11 @@
+{
+  "identities": [
+    {
+      "name": "autocheck",
+      "credentials": [
+        { "accessKey": "autocheck", "secretKey": "autocheck-secret" }
+      ],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}

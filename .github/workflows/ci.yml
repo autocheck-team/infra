@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compose config
+        run: |
+          docker compose -f compose.yaml config -q
+          docker compose -f compose.yaml -f compose.local.yaml config -q --no-interpolate
+      - name: SeaweedFS S3 config is valid JSON
+        run: jq empty deploy/seaweedfs/s3.json
