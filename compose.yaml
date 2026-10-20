@@ -26,6 +26,30 @@ services:
       - seaweeddata:/data
       - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
 
+  # Keycloak: вход, регистрация, роли (student/author/admin). Realm импортируется
+  # из deploy/keycloak при первом старте. Админка: http://localhost:8180 (admin/admin).
+  # KC_HOSTNAME фиксирует issuer токенов как http://localhost:8180/realms/autocheck,
+  # чтобы он совпадал и для браузера, и для бэкенда внутри compose.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports: ["8180:8080"]
+    volumes:
+      - keycloakdata:/opt/keycloak/data
+      - ./deploy/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # В образе нет curl, поэтому проверка через /dev/tcp.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
   migrate:
     image: ghcr.io/autocheck-team/backend-migrate:${BACKEND_TAG:-latest}
     command: ["up"]
@@ -35,13 +59,17 @@ services:
       S3_BUCKET: autocheck
       S3_ACCESS_KEY: autocheck
       S3_SECRET_KEY: autocheck-secret
+      OIDC_ISSUER: http://localhost:8180/realms/autocheck
+      OIDC_JWKS_URL: http://keycloak:8080/realms/autocheck/protocol/openid-connect/certs
+      OIDC_AUDIENCE: autocheck-api
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
     depends_on:
       postgres: { condition: service_healthy }
 
   api:
     image: ghcr.io/autocheck-team/backend-api:${BACKEND_TAG:-latest}
     environment: *backend-env
-    ports: ["8080:8080"]
+    ports: ["8080:8080", "9090:9090"]
     depends_on:
       migrate: { condition: service_completed_successfully }
 
@@ -52,5 +80,6 @@ services:
       migrate: { condition: service_completed_successfully }
 
 volumes:
+  keycloakdata:
   pgdata:
   seaweeddata:

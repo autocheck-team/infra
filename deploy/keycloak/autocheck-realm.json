@@ -1,0 +1,122 @@
+{
+  "realm": "autocheck",
+  "displayName": "Autocheck",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 86400,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["ru", "en"],
+  "defaultLocale": "ru",
+  "roles": {
+    "realm": [
+      { "name": "student", "description": "Студент: решает задания и отправляет посылки" },
+      { "name": "author", "description": "Автор заданий: создаёт задания и тесты" },
+      { "name": "admin", "description": "Администратор платформы" },
+      {
+        "name": "default-roles-autocheck",
+        "description": "Роли, которые получает каждый новый пользователь",
+        "composite": true,
+        "composites": { "realm": ["student"] }
+      }
+    ]
+  },
+  "defaultRole": { "name": "default-roles-autocheck", "composite": true },
+  "clients": [
+    {
+      "clientId": "autocheck-web",
+      "name": "Autocheck Web",
+      "description": "Фронтенд (React). Authorization Code + PKCE.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-autocheck-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "autocheck-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "autocheck-api",
+      "name": "Autocheck API",
+      "description": "Бэкенд. Только audience для access-токенов, сам токены не получает.",
+      "enabled": true,
+      "bearerOnly": true
+    },
+    {
+      "clientId": "autocheck-cli",
+      "name": "Autocheck CLI (dev)",
+      "description": "Только для локальной разработки: токен по логину и паролю через curl.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience-autocheck-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "autocheck-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "student@autocheck.local",
+      "email": "student@autocheck.local",
+      "emailVerified": true,
+      "firstName": "Иван",
+      "lastName": "Студентов",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "student", "temporary": false }],
+      "realmRoles": ["default-roles-autocheck"]
+    },
+    {
+      "username": "author@autocheck.local",
+      "email": "author@autocheck.local",
+      "emailVerified": true,
+      "firstName": "Анна",
+      "lastName": "Авторова",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "author", "temporary": false }],
+      "realmRoles": ["default-roles-autocheck", "author"]
+    },
+    {
+      "username": "admin@autocheck.local",
+      "email": "admin@autocheck.local",
+      "emailVerified": true,
+      "firstName": "Админ",
+      "lastName": "Платформы",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["default-roles-autocheck", "author", "admin"]
+    }
+  ]
+}
