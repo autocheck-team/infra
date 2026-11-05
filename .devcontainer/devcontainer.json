@@ -1,0 +1,17 @@
+{
+  // Демо-стенд в GitHub Codespaces: вся система поднимается внутри машины с Docker.
+  // Бесплатная квота личного аккаунта — 120 ядро-часов в месяц, то есть 60 часов на 2 ядрах.
+  "name": "Autocheck",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": { "cpus": 2, "memory": "8gb" },
+  "postStartCommand": "docker compose pull --ignore-pull-failures && docker compose up -d",
+  "forwardPorts": [8080, 8180, 8333],
+  "portsAttributes": {
+    "8080": { "label": "API" },
+    "8180": { "label": "Keycloak" },
+    "8333": { "label": "S3" }
+  }
+}

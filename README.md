@@ -27,6 +27,17 @@ curl localhost:8080/readyz
 | SeaweedFS S3 | http://localhost:8333 (ключ `autocheck` / `autocheck-secret`) |
 | SeaweedFS master UI | http://localhost:9333 |
 
+Воркер запускает решения в соседних контейнерах, поэтому ему подключён `/var/run/docker.sock`. Запускайте систему только на машине, где это допустимо: доступ к сокету равносилен root на хосте.
+
+## Демо-стенд в Codespaces
+
+Постоянного сервера у проекта нет. Для показа систему можно поднять в GitHub Codespaces: **Code → Codespaces → Create** на этом репозитории, конфигурация лежит в [.devcontainer](.devcontainer/devcontainer.json).
+
+- Открывайте codespace через VS Code или `gh codespace ports forward`, чтобы адреса остались `localhost`: на них настроены issuer Keycloak и presigned-ссылки S3. Через веб-адреса `*.app.github.dev` вход работать не будет.
+- Бесплатная квота личного аккаунта: 120 ядро-часов в месяц, это 60 часов на 2 ядрах. У организаций бесплатной квоты нет.
+- При простое codespace останавливается, поэтому перед показом его нужно запустить заранее.
+- Пароли в `compose.yaml` тестовые. Для реального сервера их нужно заменить.
+
 ## Авторизация (Keycloak)
 
 Realm `autocheck` импортируется из [deploy/keycloak/autocheck-realm.json](deploy/keycloak/autocheck-realm.json)

@@ -75,9 +75,16 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
 
+  # Воркер запускает решения в соседних контейнерах через Docker API. Доступ к сокету
+  # равносилен root на хосте, поэтому код студентов выполняется только в песочницах,
+  # а не в самом воркере. Сокет принадлежит root, отсюда user: root.
   worker:
     image: ghcr.io/autocheck-team/backend-worker:${BACKEND_TAG:-latest}
+    user: root
+    restart: on-failure
     environment: *backend-env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       migrate: { condition: service_completed_successfully }
 
