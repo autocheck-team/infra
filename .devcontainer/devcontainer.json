@@ -5,7 +5,9 @@
   // Версия Ubuntu закреплена: на более новой фича docker-in-docker не ставится (нет пакетов Moby).
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    // SSH нужен для `gh codespace ssh` и `gh codespace logs`: без него стенд не продиагностировать.
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
   "hostRequirements": { "cpus": 2, "memory": "8gb" },
   "postStartCommand": "docker compose pull --ignore-pull-failures && docker compose up -d",
