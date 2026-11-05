@@ -2,7 +2,8 @@
   // Демо-стенд в GitHub Codespaces: вся система поднимается внутри машины с Docker.
   // Бесплатная квота личного аккаунта — 120 ядро-часов в месяц, то есть 60 часов на 2 ядрах.
   "name": "Autocheck",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  // Версия Ubuntu закреплена: на более новой фича docker-in-docker не ставится (нет пакетов Moby).
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
