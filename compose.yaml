@@ -31,7 +31,7 @@ services:
   # KC_HOSTNAME фиксирует issuer токенов как http://localhost:8180/realms/autocheck,
   # чтобы он совпадал и для браузера, и для бэкенда внутри compose.
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8.1
+    image: quay.io/keycloak/keycloak:26.8.2-1
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
