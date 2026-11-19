@@ -54,6 +54,7 @@ services:
     image: ghcr.io/autocheck-team/backend-migrate:${BACKEND_TAG:-latest}
     command: ["up"]
     environment: &backend-env
+      METRICS_ADDR: ":9100"
       DATABASE_URL: postgres://autocheck:autocheck@postgres:5432/autocheck?sslmode=disable
       S3_ENDPOINT: seaweedfs:8333
       # Адрес хранилища для браузера: на него выписываются presigned-ссылки на загрузку тестов.
@@ -69,6 +70,9 @@ services:
       # Без ключей оформление подписки выключено, лимиты бесплатного тарифа действуют.
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      # Ключ OpenRouter для ИИ-функций (генерация тестов, подбор заданий, подсказки).
+      # Без ключа ИИ-функции выключены, остальное работает.
+      LLM_API_KEY: ${OPENROUTER_API_KEY:-}
     depends_on:
       postgres: { condition: service_healthy }
 
@@ -92,7 +96,70 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
 
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    profiles: [monitoring]
+    command: ["--config.file=/etc/prometheus/prometheus.yaml", "--storage.tsdb.retention.time=7d"]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9091}:9090"]
+    volumes:
+      - ./deploy/monitoring/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheusdata:/prometheus
+    depends_on: [api, worker]
+
+  grafana:
+    image: grafana/grafana:12.3.0
+    profiles: [monitoring]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus, loki]
+
+  # Named volume создаётся root; выдаём его штатному non-root UID Loki.
+  monitoring-init:
+    image: busybox:1.37.0
+    profiles: [monitoring]
+    user: "0:0"
+    network_mode: none
+    command: ["chown", "10001:10001", "/loki"]
+    volumes:
+      - lokidata:/loki
+
+  loki:
+    image: grafana/loki:3.6.0
+    profiles: [monitoring]
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports: ["127.0.0.1:${LOKI_PORT:-3100}:3100"]
+    volumes:
+      - ./deploy/monitoring/loki.yaml:/etc/loki/config.yaml:ro
+      - lokidata:/loki
+    depends_on:
+      monitoring-init: { condition: service_completed_successfully }
+
+  # Docker API нужен для discovery и чтения stdout; sandbox-контейнеры исключены.
+  alloy:
+    image: grafana/alloy:v1.11.3
+    profiles: [monitoring]
+    user: root
+    environment:
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    command: ["run", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./deploy/monitoring/config.alloy:/etc/alloy/config.alloy:ro
+      - alloydata:/var/lib/alloy/data
+    depends_on: [loki]
+
 volumes:
+  prometheusdata:
+  grafanadata:
+  lokidata:
+  alloydata:
   keycloakdata:
   pgdata:
   seaweeddata:
