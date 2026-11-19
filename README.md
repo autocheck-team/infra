@@ -85,3 +85,61 @@ make up-local
 Остальное: `make down`, `make logs`, `make ps`, `make reset` (удаляет данные).
 
 Учётные данные в `compose.yaml` и `deploy/seaweedfs/s3.json` только для локальной разработки.
+
+
+## Метрики и логи (HPRPR-15)
+
+Профиль `monitoring` выключен по умолчанию. После сборки актуальных api/worker:
+
+```sh
+make up-local
+make monitoring-up
+# либо сразу приложение из ../backend вместе с мониторингом:
+docker compose -f compose.yaml -f compose.local.yaml --profile monitoring up -d --build
+make monitoring-down # останавливает и удаляет только monitoring-контейнеры
+```
+
+| Сервис | Локальный адрес |
+| --- | --- |
+| Prometheus | http://localhost:9091 |
+| Grafana | http://localhost:3000 — admin, пароль `GRAFANA_ADMIN_PASSWORD` из `.env` (локальный дефолт `admin`) |
+| Loki API | http://localhost:3100 |
+
+Порты monitoring привязаны к loopback, не конфликтуют с 8080/8180/8333/9090;
+их можно изменить через `PROMETHEUS_PORT`, `GRAFANA_PORT`, `LOKI_PORT`.
+Пароль Grafana применяется при первой инициализации её volume. Datasource Prometheus
+и Loki и dashboard **Autocheck — мониторинг** (`/d/autocheck`) загружаются provisioning.
+Панели: очередь и свежесть снимка, вердикты, p50/p95 gRPC и REST по методам,
+ошибки, попытки/SE, стадии проверки, активные проверки, уборка sandbox, платежи и 429.
+Prometheus опрашивает `api:9100` и `worker:9100` раз в 5 секунд; метрики на хост
+не опубликованы. При изменении `METRICS_ADDR` обновите targets в
+`deploy/monitoring/prometheus.yaml`.
+
+Alloy читает stdout через Docker API и собирает **только api/worker текущего
+Compose-проекта** (`COMPOSE_PROJECT_NAME`, включая `docker compose -p ...`). Контейнеры
+песочницы и чужие проекты исключены. JSON-поле `level` становится меткой Loki,
+`msg` и `submission_id` остаются в JSON без индексации каждой посылки. Исходные JSON
+сохраняются: в Grafana Explore используйте `{service="worker"} | json` или
+`{service="worker"} | json | submission_id="UUID"`. Доступ Alloy к Docker socket,
+как и у worker, требует доверенного локального окружения; суффикс `:ro` у socket
+не ограничивает методы Docker API.
+
+Проверка готовности и данных (пароль передавайте из переменной, не печатайте):
+
+```sh
+curl -fsSG localhost:9091/api/v1/query --data-urlencode 'query=up{job=~"api|worker"}'
+curl -fsSG localhost:9091/api/v1/query --data-urlencode 'query=autocheck_judge_verdicts_total'
+curl -fsS -u "admin:${GRAFANA_ADMIN_PASSWORD:-admin}" localhost:3000/api/dashboards/uid/autocheck
+curl -fsSG localhost:3100/loki/api/v1/query_range --data-urlencode 'query={service=~"api|worker"} | json' --data-urlencode 'limit=10'
+```
+
+Служебный `monitoring-init` перед запуском Loki назначает владельцем его volume
+штатный UID 10001; сам Loki работает без root. Prometheus и Loki хранят данные 7 дней. Данные Prometheus, Grafana, Loki и позиции
+Alloy живут в отдельных named volumes. `monitoring-down` сохраняет их и приложение;
+`docker compose --profile monitoring down -v` удаляет весь локальный стек с данными.
+
+Для проверки из worktree используйте временный override с абсолютным `build.context`
+для migrate/api/worker, собственным Compose project name, другими host-портами и без
+публикации PostgreSQL на 5432. Это не требует менять `compose.local.yaml`.
+Конфигурация сбора Docker-логов следует
+[официальному примеру Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/).
