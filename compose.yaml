@@ -70,6 +70,9 @@ services:
       # Без ключей оформление подписки выключено, лимиты бесплатного тарифа действуют.
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
+      # Ключ OpenRouter для ИИ-функций (генерация тестов, подбор заданий, подсказки).
+      # Без ключа ИИ-функции выключены, остальное работает.
+      LLM_API_KEY: ${OPENROUTER_API_KEY:-}
     depends_on:
       postgres: { condition: service_healthy }
 
