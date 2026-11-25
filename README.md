@@ -14,12 +14,18 @@
 Нужен только Docker.
 
 ```sh
-make up        # postgres, seaweedfs, миграции, api, worker на образах из GHCR
+make up        # весь стек: инфраструктура, backend из GHCR и frontend
 curl localhost:8080/readyz
 ```
 
+Frontend автоматически собирается из `../frontend`, запускает Vite dev-сервер
+с hot reload и доступен на <http://localhost:5173>. Для запуска всего проекта
+из локального исходника backend используйте `make up-local`; frontend в обоих
+случаях запускается в контейнере.
+
 | Сервис | Адрес |
 |---|---|
+| Frontend (Vite) | http://localhost:5173 |
 | REST API (grpc-gateway) | http://localhost:8080, спецификация: http://localhost:8080/openapi.yaml |
 | gRPC API | localhost:9090 (reflection включён: `grpcurl -plaintext localhost:9090 list`) |
 | Keycloak | http://localhost:8180, админка: `admin` / `admin` |
@@ -79,6 +85,8 @@ client_id `autocheck-web`, для запросов к API передавать a
 ```sh
 make up-local
 ```
+
+Эта команда также запускает frontend из `../frontend`.
 
 Конкретная версия бэкенда: `BACKEND_TAG=sha-<commit> make up`.
 
