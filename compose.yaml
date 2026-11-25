@@ -96,6 +96,24 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
 
+  # Vite dev server for local use. Source is mounted for hot reload; node_modules
+  # stays in the container so host platform dependencies are not reused.
+  frontend:
+    build: { context: ../frontend }
+    working_dir: /app
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+      VITE_OIDC_URL: http://localhost:8180
+      VITE_OIDC_REALM: autocheck
+      VITE_OIDC_CLIENT_ID: autocheck-web
+    ports: ["5173:5173"]
+    volumes:
+      - ../frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      api: { condition: service_started }
+
   prometheus:
     image: prom/prometheus:v3.7.3
     profiles: [monitoring]
@@ -156,6 +174,7 @@ services:
     depends_on: [loki]
 
 volumes:
+  frontend_node_modules:
   prometheusdata:
   grafanadata:
   lokidata:
