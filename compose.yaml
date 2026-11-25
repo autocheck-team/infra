@@ -140,7 +140,7 @@ services:
 
   # Named volume создаётся root; выдаём его штатному non-root UID Loki.
   monitoring-init:
-    image: busybox:1.37.0
+    image: busybox:1.38.0
     profiles: [monitoring]
     user: "0:0"
     network_mode: none
