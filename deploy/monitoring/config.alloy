@@ -1,0 +1,49 @@
+// Выбираем только контейнеры этого Compose-проекта, не чужие приложения хоста.
+discovery.docker "autocheck" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+  filter {
+    name = "label"
+    values = ["com.docker.compose.project=" + sys.env("COMPOSE_PROJECT_NAME")]
+  }
+}
+
+discovery.relabel "autocheck" {
+  targets = discovery.docker.autocheck.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex = "api|worker"
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label = "project"
+  }
+}
+
+loki.source.docker "autocheck" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.autocheck.output
+  forward_to = [loki.process.autocheck.receiver]
+}
+
+loki.process "autocheck" {
+  stage.json {
+    expressions = { level = "level", msg = "msg", submission_id = "submission_id" }
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  // msg и submission_id остаются в JSON: метки не растут на каждую посылку.
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
