@@ -161,7 +161,7 @@ services:
 
   # Docker API нужен для discovery и чтения stdout; sandbox-контейнеры исключены.
   alloy:
-    image: grafana/alloy:v1.11.3
+    image: grafana/alloy:v1.22.0
     profiles: [monitoring]
     user: root
     environment:
