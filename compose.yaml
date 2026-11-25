@@ -149,7 +149,7 @@ services:
       - lokidata:/loki
 
   loki:
-    image: grafana/loki:3.6.0
+    image: grafana/loki:3.7.10
     profiles: [monitoring]
     command: ["-config.file=/etc/loki/config.yaml"]
     ports: ["127.0.0.1:${LOKI_PORT:-3100}:3100"]
